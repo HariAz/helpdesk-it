@@ -16,10 +16,13 @@ use App\Models\TicketAssignment;
 use App\Models\TicketStatusLog;
 use App\Models\User;
 use App\Notifications\TicketNotification;
+use App\Services\WebhookService;
 use Illuminate\Support\Str;
 
 class TicketController extends Controller
 {
+    public function __construct(private WebhookService $webhooks) {}
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -112,6 +115,7 @@ class TicketController extends Controller
         );
 
         SendNewTicketNotification::dispatch($ticket);
+        $this->webhooks->fire('ticket.created', $ticket);
 
         return redirect()->route('tickets.show', $ticket)->with('success', 'Tiket berhasil dibuat: ' . $ticketNumber);
     }
@@ -175,6 +179,7 @@ class TicketController extends Controller
             "Status tiket {$ticket->ticket_number} berubah menjadi {$statusLabel}", 'bi-arrow-repeat', 'info'));
 
         SendTicketStatusChangedNotification::dispatch($ticket->fresh(), $oldStatus, $data['status'], $data['note']);
+        $this->webhooks->fire('ticket.status_changed', $ticket, ['old_status' => $oldStatus, 'new_status' => $data['status']]);
 
         return back()->with('success', 'Status tiket diperbarui.');
     }
@@ -215,6 +220,7 @@ class TicketController extends Controller
         }
 
         SendTicketAssignedNotification::dispatch($ticket->fresh());
+        $this->webhooks->fire('ticket.assigned', $ticket);
 
         return back()->with('success', 'Tiket berhasil di-assign.');
     }

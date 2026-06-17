@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ActivityLog;
+use App\Services\LdapAuthService;
 
 class AuthController extends Controller
 {
@@ -34,6 +35,19 @@ class AuthController extends Controller
             ]);
             ActivityLog::record('login');
             return redirect()->intended(route('dashboard'));
+        }
+
+        // LDAP fallback — only tried when local auth fails
+        $ldap = app(LdapAuthService::class);
+        if ($ldap->isEnabled()) {
+            $ldapUser = $ldap->authenticate($credentials['email'], $credentials['password']);
+            if ($ldapUser) {
+                auth()->login($ldapUser, $request->boolean('remember'));
+                $request->session()->regenerate();
+                $ldapUser->update(['last_login_at' => now(), 'last_login_ip' => $request->ip()]);
+                ActivityLog::record('login');
+                return redirect()->intended(route('dashboard'));
+            }
         }
 
         return back()->withErrors(['email' => 'Email atau password salah.'])->withInput();

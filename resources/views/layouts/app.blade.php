@@ -243,6 +243,15 @@
             <a href="{{ route('settings.work-schedule') }}" class="nav-link {{ request()->routeIs('settings.work-schedule*') ? 'active' : '' }}">
                 <i class="bi bi-clock"></i> Jadwal Kerja
             </a>
+            <a href="{{ route('settings.integrations') }}" class="nav-link {{ request()->routeIs('settings.integrations*') ? 'active' : '' }}">
+                <i class="bi bi-plug"></i> Integrasi
+            </a>
+            <a href="{{ route('settings.webhooks') }}" class="nav-link {{ request()->routeIs('settings.webhooks*') ? 'active' : '' }}">
+                <i class="bi bi-broadcast"></i> Webhook
+            </a>
+            <a href="{{ route('settings.api-tokens') }}" class="nav-link {{ request()->routeIs('settings.api-tokens*') ? 'active' : '' }}">
+                <i class="bi bi-key"></i> API Token
+            </a>
         @endif
     </div>
 

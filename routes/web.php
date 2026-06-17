@@ -16,6 +16,9 @@ use App\Http\Controllers\RatingController;
 use App\Http\Controllers\SlaConfigController;
 use App\Http\Controllers\TicketTemplateController;
 use App\Http\Controllers\WorkScheduleController;
+use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\ApiTokenController;
 
 // Auth
 Route::get('/', fn() => redirect()->route('login'));
@@ -85,6 +88,22 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/sla', [SlaConfigController::class, 'update'])->name('settings.sla.update');
         Route::post('/settings/sla/override', [SlaConfigController::class, 'store'])->name('settings.sla.store');
         Route::delete('/settings/sla/{slaConfig}', [SlaConfigController::class, 'destroy'])->name('settings.sla.destroy');
+        Route::get('/settings/integrations', [IntegrationController::class, 'index'])->name('settings.integrations');
+        Route::patch('/settings/integrations', [IntegrationController::class, 'update'])->name('settings.integrations.update');
+        Route::get('/settings/integrations/test-telegram', [IntegrationController::class, 'testTelegram'])->name('settings.integrations.test-telegram');
+        Route::get('/settings/integrations/test-whatsapp', [IntegrationController::class, 'testWhatsApp'])->name('settings.integrations.test-whatsapp');
+        Route::get('/settings/integrations/test-ldap', [IntegrationController::class, 'testLdap'])->name('settings.integrations.test-ldap');
+        Route::post('/settings/integrations/send-test', [IntegrationController::class, 'sendTestMessage'])->name('settings.integrations.send-test');
+        Route::get('/settings/webhooks', [WebhookController::class, 'index'])->name('settings.webhooks');
+        Route::post('/settings/webhooks', [WebhookController::class, 'store'])->name('settings.webhooks.store');
+        Route::patch('/settings/webhooks/{webhookEndpoint}', [WebhookController::class, 'update'])->name('settings.webhooks.update');
+        Route::delete('/settings/webhooks/{webhookEndpoint}', [WebhookController::class, 'destroy'])->name('settings.webhooks.destroy');
+        Route::get('/settings/webhooks/{webhookEndpoint}/logs', [WebhookController::class, 'logs'])->name('settings.webhooks.logs');
+        Route::get('/settings/webhooks/{webhookEndpoint}/test', [WebhookController::class, 'test'])->name('settings.webhooks.test');
+        Route::post('/settings/webhooks/{webhookEndpoint}/regenerate-secret', [WebhookController::class, 'regenerateSecret'])->name('settings.webhooks.regenerate-secret');
+        Route::get('/settings/api-tokens', [ApiTokenController::class, 'index'])->name('settings.api-tokens');
+        Route::post('/settings/api-tokens', [ApiTokenController::class, 'store'])->name('settings.api-tokens.store');
+        Route::delete('/settings/api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('settings.api-tokens.destroy');
 
         // KB management (supervisor/teknisi)
         Route::get('/knowledge-base/create', [KbArticleController::class, 'create'])->name('knowledge-base.create');

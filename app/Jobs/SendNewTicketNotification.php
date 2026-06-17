@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Mail\NewTicketMail;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\ChannelNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,5 +28,6 @@ class SendNewTicketNotification implements ShouldQueue
         foreach ($supervisors as $supervisor) {
             Mail::to($supervisor->email)->send(new NewTicketMail($this->ticket));
         }
+        app(ChannelNotifier::class)->ticketCreated($this->ticket);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\TicketStatusChangedMail;
 use App\Models\Ticket;
+use App\Services\ChannelNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -38,5 +39,6 @@ class SendTicketStatusChangedNotification implements ShouldQueue
                 new TicketStatusChangedMail($this->ticket, $this->oldStatus, $this->newStatus, $this->note)
             );
         }
+        app(ChannelNotifier::class)->ticketStatusChanged($this->ticket, $this->oldStatus, $this->newStatus);
     }
 }
