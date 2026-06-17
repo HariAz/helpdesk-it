@@ -73,6 +73,91 @@
     </div>
 </div>
 
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+    <!-- Tren Tiket (Line Chart) -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom py-3">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>Tren Tiket — 30 Hari Terakhir</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kategori (Doughnut) -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom py-3">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-pie-chart text-success me-2"></i>Tiket per Kategori (Bulan Ini)</h6>
+            </div>
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                @if($categoryPie->count())
+                <canvas id="categoryChart" style="max-height:200px;"></canvas>
+                @else
+                <p class="text-muted small text-center my-auto">Belum ada tiket bulan ini.</p>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Heatmap Jam Sibuk -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-heat me-2 text-warning"></i>Heatmap Jam Sibuk — 90 Hari Terakhir</h6>
+    </div>
+    <div class="card-body">
+        @php
+            $dayNames = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+        @endphp
+        <div style="overflow-x:auto;">
+            <table style="border-collapse:separate; border-spacing:2px; font-size:.7rem;">
+                <thead>
+                    <tr>
+                        <th style="width:2.5rem; padding-right:.5rem; font-weight:600; color:#64748b;"></th>
+                        @for($h = 0; $h < 24; $h++)
+                        <th style="text-align:center; width:2rem; color:#64748b; font-weight:500;">{{ $h }}</th>
+                        @endfor
+                    </tr>
+                </thead>
+                <tbody>
+                    @for($d = 0; $d < 7; $d++)
+                    <tr>
+                        <td style="padding-right:.5rem; font-weight:600; color:#374151; white-space:nowrap;">{{ $dayNames[$d] }}</td>
+                        @for($h = 0; $h < 24; $h++)
+                        @php
+                            $cnt = $chartHeatmap[$d][$h] ?? 0;
+                            $intensity = $heatmapMax > 0 ? $cnt / $heatmapMax : 0;
+                            $alpha = round($intensity * 0.85 + ($cnt > 0 ? 0.1 : 0), 2);
+                            $bg = $cnt > 0 ? "rgba(26,86,219,{$alpha})" : "#f1f5f9";
+                            $fg = $intensity > 0.5 ? '#fff' : '#374151';
+                        @endphp
+                        <td title="{{ $dayNames[$d] }} {{ $h }}:00 — {{ $cnt }} tiket"
+                            style="background:{{ $bg }}; color:{{ $fg }}; text-align:center; border-radius:3px;
+                                   width:2rem; height:1.6rem; cursor:default; transition:transform .1s;"
+                            onmouseover="this.style.transform='scale(1.2)'"
+                            onmouseout="this.style.transform='scale(1)'">
+                            {{ $cnt ?: '' }}
+                        </td>
+                        @endfor
+                    </tr>
+                    @endfor
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2">
+            <small class="text-muted">Kurang aktif</small>
+            @for($i = 1; $i <= 8; $i++)
+            <div style="width:1.2rem; height:1rem; background:rgba(26,86,219,{{ round($i/8, 2) }}); border-radius:2px;"></div>
+            @endfor
+            <small class="text-muted">Paling sibuk</small>
+        </div>
+    </div>
+</div>
+
 <div class="row g-3">
     <!-- Near SLA -->
     <div class="col-lg-8">
@@ -184,3 +269,94 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'Segoe UI', sans-serif";
+Chart.defaults.color = '#64748b';
+
+// Trend Line Chart
+(function() {
+    const trend = @json($chartTrend);
+    const ctx = document.getElementById('trendChart');
+    if (!ctx) return;
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: trend.labels,
+            datasets: [
+                {
+                    label: 'Tiket Baru',
+                    data: trend.new,
+                    borderColor: '#1a56db',
+                    backgroundColor: 'rgba(26,86,219,.08)',
+                    tension: .4,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                },
+                {
+                    label: 'Diselesaikan',
+                    data: trend.resolved,
+                    borderColor: '#16a34a',
+                    backgroundColor: 'rgba(22,163,74,.07)',
+                    tension: .4,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    borderDash: [4, 2],
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, padding: 16 } },
+                tooltip: { mode: 'index' },
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f1f5f9' } },
+                x: { grid: { display: false }, ticks: {
+                    maxTicksLimit: 10,
+                    maxRotation: 0,
+                }},
+            }
+        }
+    });
+})();
+
+// Category Doughnut Chart
+(function() {
+    const pie = @json($categoryPie);
+    const ctx = document.getElementById('categoryChart');
+    if (!ctx || !pie.length) return;
+    const palette = ['#1a56db','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#0284c7'];
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: pie.map(p => p.label),
+            datasets: [{
+                data: pie.map(p => p.count),
+                backgroundColor: palette.slice(0, pie.length),
+                borderWidth: 2,
+                borderColor: '#fff',
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '60%',
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.label}: ${ctx.raw} tiket`
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
+@endpush

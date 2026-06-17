@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\ActivityLog;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -38,7 +39,40 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
-            return view('dashboard.supervisor', compact('stats', 'nearSla', 'recentActivity', 'topTeknisi'));
+            // Chart: ticket trend last 30 days
+            $trendDays = collect(range(29, 0))->map(fn($i) => now()->subDays($i)->format('Y-m-d'));
+            $newByDay = Ticket::whereBetween('created_at', [now()->subDays(29)->startOfDay(), now()->endOfDay()])
+                ->selectRaw('DATE(created_at) as date, COUNT(*) as cnt')->groupBy('date')->pluck('cnt', 'date');
+            $resolvedByDay = Ticket::whereNotNull('resolved_at')
+                ->whereBetween('resolved_at', [now()->subDays(29)->startOfDay(), now()->endOfDay()])
+                ->selectRaw('DATE(resolved_at) as date, COUNT(*) as cnt')->groupBy('date')->pluck('cnt', 'date');
+            $chartTrend = [
+                'labels' => $trendDays->map(fn($d) => Carbon::parse($d)->format('d M'))->values()->toArray(),
+                'new'    => $trendDays->map(fn($d) => (int)($newByDay[$d] ?? 0))->values()->toArray(),
+                'resolved' => $trendDays->map(fn($d) => (int)($resolvedByDay[$d] ?? 0))->values()->toArray(),
+            ];
+
+            // Chart: heatmap by day-of-week × hour (last 90 days)
+            $heatmapRaw = Ticket::where('created_at', '>=', now()->subDays(89)->startOfDay())
+                ->selectRaw('DAYOFWEEK(created_at)-1 as dow, HOUR(created_at) as hr, COUNT(*) as cnt')
+                ->groupBy('dow', 'hr')->get();
+            $heatmapMax = $heatmapRaw->max('cnt') ?: 1;
+            $chartHeatmap = [];
+            foreach ($heatmapRaw as $row) {
+                $chartHeatmap[(int)$row->dow][(int)$row->hr] = (int)$row->cnt;
+            }
+
+            // Chart: category distribution this month
+            $categoryPie = Ticket::whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->with('category:id,name')
+                ->selectRaw('category_id, COUNT(*) as cnt')->groupBy('category_id')->get()
+                ->map(fn($r) => ['label' => $r->category?->name ?? 'Tanpa Kategori', 'count' => (int)$r->cnt]);
+
+            return view('dashboard.supervisor', compact(
+                'stats', 'nearSla', 'recentActivity', 'topTeknisi',
+                'chartTrend', 'chartHeatmap', 'heatmapMax', 'categoryPie'
+            ));
         }
 
         if ($user->isTeknisi()) {

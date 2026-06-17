@@ -15,6 +15,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('helpdesk:check-sla --notify')->everyFifteenMinutes();
         $schedule->command('helpdesk:auto-close')->dailyAt('00:00');
         $schedule->command('helpdesk:send-summary')->dailyAt('07:00');
+        $schedule->command('helpdesk:send-weekly-report')->weeklyOn(1, '07:00');
     }
 
     /**
