@@ -86,10 +86,58 @@
                                             <i class="bi bi-{{ $user->is_active ? 'pause-circle' : 'play-circle' }}"></i>
                                         </button>
                                     </form>
+                                    @if($user->role === 'teknisi')
+                                    <button class="btn btn-sm btn-outline-warning"
+                                            title="Reassign Massal"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#reassignModal{{ $user->id }}">
+                                        <i class="bi bi-arrow-left-right"></i>
+                                    </button>
+                                    @endif
                                     @endif
                                 </div>
                             </td>
                         </tr>
+
+                        @if($user->role === 'teknisi')
+                        <!-- Reassign Modal -->
+                        <div class="modal fade" id="reassignModal{{ $user->id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <form method="POST" action="{{ route('users.reassign', $user) }}" class="modal-content">
+                                    @csrf
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Reassign Massal — {{ $user->name }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="text-muted small">Pindahkan semua tiket aktif dari <strong>{{ $user->name }}</strong> ke teknisi lain.</p>
+                                        <div class="mb-3">
+                                            <label class="form-label">Pindahkan ke Teknisi</label>
+                                            <select name="to_user_id" class="form-select" required>
+                                                <option value="">Pilih teknisi tujuan...</option>
+                                                @foreach($users->where('role','teknisi')->where('id','!=',$user->id)->where('is_active',true) as $tek)
+                                                    <option value="{{ $tek->id }}">{{ $tek->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="mb-0">
+                                            <label class="form-label">Catatan (opsional)</label>
+                                            <input type="text" name="note" class="form-control"
+                                                   placeholder="Contoh: {{ $user->name }} sedang cuti">
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                        <button type="submit" class="btn btn-warning"
+                                                onclick="return confirm('Yakin reassign semua tiket aktif {{ $user->name }}?')">
+                                            <i class="bi bi-arrow-left-right me-1"></i> Reassign Sekarang
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        @endif
+
                     @endforeach
                 </tbody>
             </table>

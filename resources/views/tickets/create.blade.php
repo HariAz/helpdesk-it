@@ -158,6 +158,21 @@
                 </table>
             </div>
         </div>
+        <!-- KB Search Widget -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom py-3">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-journal-richtext me-2 text-success"></i>Cari di Knowledge Base</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-2">Mungkin masalah Anda sudah ada solusinya.</p>
+                <div class="input-group input-group-sm">
+                    <input type="text" id="kbSearch" class="form-control" placeholder="Ketik kata kunci...">
+                    <button class="btn btn-outline-secondary" type="button" id="kbSearchBtn"><i class="bi bi-search"></i></button>
+                </div>
+                <div id="kbResults" class="mt-2"></div>
+            </div>
+        </div>
+
         <div class="card border-0 shadow-sm">
             <div class="card-body">
                 <h6 class="fw-bold mb-2"><i class="bi bi-lightbulb text-warning me-2"></i>Tips</h6>
@@ -247,6 +262,25 @@
             list.appendChild(div);
         });
     });
+
+    // KB search
+    function doKbSearch() {
+        const q = document.getElementById('kbSearch').value.trim();
+        if (!q) return;
+        fetch(`/knowledge-base/search?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById('kbResults');
+                if (!data.length) { el.innerHTML = '<p class="text-muted small">Tidak ditemukan.</p>'; return; }
+                el.innerHTML = data.map(a =>
+                    `<a href="/knowledge-base/${a.id}" target="_blank" class="d-block text-decoration-none text-primary small mb-1">
+                        <i class="bi bi-file-text me-1"></i>${a.title}
+                    </a>`
+                ).join('');
+            });
+    }
+    document.getElementById('kbSearchBtn')?.addEventListener('click', doKbSearch);
+    document.getElementById('kbSearch')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doKbSearch(); }});
 
     // Drop zone
     const dropZone = document.getElementById('drop-zone');

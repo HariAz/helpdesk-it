@@ -461,6 +461,50 @@
         </div>
         @endif
 
+        <!-- Knowledge Base Articles -->
+        @php $kbArticles = $ticket->kbArticles; @endphp
+        @if($kbArticles->count() || ($user->isTeknisi() || $user->isSupervisor()))
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom py-3">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-journal-richtext me-2 text-success"></i>Knowledge Base</h6>
+            </div>
+            <div class="card-body p-0">
+                @forelse($kbArticles as $kb)
+                <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                    <i class="bi bi-file-text text-success flex-shrink-0"></i>
+                    <a href="{{ route('knowledge-base.show', $kb) }}" target="_blank"
+                       class="flex-grow-1 small text-decoration-none text-dark fw-semibold">
+                        {{ $kb->title }}
+                    </a>
+                    @if($user->isTeknisi() || $user->isSupervisor())
+                    <form method="POST" action="{{ route('tickets.kb-detach', [$ticket, $kb]) }}">
+                        @csrf @method('DELETE')
+                        <button class="btn btn-sm btn-outline-danger" title="Lepas"><i class="bi bi-x"></i></button>
+                    </form>
+                    @endif
+                </div>
+                @empty
+                <p class="text-muted small text-center py-3 mb-0">Belum ada artikel dilampirkan.</p>
+                @endforelse
+
+                @if($user->isTeknisi() || $user->isSupervisor())
+                <div class="px-3 py-2">
+                    <form method="POST" action="{{ route('tickets.kb-attach', $ticket) }}" class="d-flex gap-2">
+                        @csrf
+                        <input type="text" id="kbAttachSearch" class="form-control form-control-sm"
+                               placeholder="Cari artikel KB..." autocomplete="off">
+                        <button type="submit" id="kbAttachBtn" class="btn btn-outline-success btn-sm" disabled>
+                            <i class="bi bi-link"></i>
+                        </button>
+                        <input type="hidden" name="kb_article_id" id="kbAttachId">
+                    </form>
+                    <div id="kbAttachSuggestions" class="list-group shadow-sm mt-1" style="display:none; position:absolute; z-index:100; width:calc(100% - 4rem);"></div>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
         <!-- Upload Attachment (Teknisi) -->
         @if(($user->isTeknisi() || $user->isSupervisor()) && $isActive)
         <div class="card border-0 shadow-sm">
@@ -556,6 +600,48 @@ function setupFilePreview(inputId, previewId) {
 }
 setupFilePreview('commentFiles', 'filePreview');
 setupFilePreview('internalFiles', 'internalFilePreview');
+
+// KB attach search
+const kbSearchInput = document.getElementById('kbAttachSearch');
+const kbSuggestions = document.getElementById('kbAttachSuggestions');
+const kbAttachIdInput = document.getElementById('kbAttachId');
+const kbAttachBtn = document.getElementById('kbAttachBtn');
+
+if (kbSearchInput) {
+    let kbTimer;
+    kbSearchInput.addEventListener('input', function() {
+        clearTimeout(kbTimer);
+        const q = this.value.trim();
+        if (q.length < 2) { kbSuggestions.style.display = 'none'; return; }
+        kbTimer = setTimeout(() => {
+            fetch(`/knowledge-base/search?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    kbSuggestions.innerHTML = '';
+                    if (!data.length) { kbSuggestions.style.display = 'none'; return; }
+                    data.forEach(a => {
+                        const item = document.createElement('button');
+                        item.type = 'button';
+                        item.className = 'list-group-item list-group-item-action small py-2';
+                        item.textContent = a.title;
+                        item.addEventListener('click', () => {
+                            kbSearchInput.value = a.title;
+                            kbAttachIdInput.value = a.id;
+                            kbAttachBtn.disabled = false;
+                            kbSuggestions.style.display = 'none';
+                        });
+                        kbSuggestions.appendChild(item);
+                    });
+                    kbSuggestions.style.display = 'block';
+                });
+        }, 300);
+    });
+    document.addEventListener('click', e => {
+        if (!kbSearchInput.contains(e.target) && !kbSuggestions.contains(e.target)) {
+            kbSuggestions.style.display = 'none';
+        }
+    });
+}
 </script>
 @endpush
 @endsection

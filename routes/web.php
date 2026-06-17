@@ -10,9 +10,12 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\KbArticleController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RatingController;
+use App\Http\Controllers\SlaConfigController;
 use App\Http\Controllers\TicketTemplateController;
+use App\Http\Controllers\WorkScheduleController;
 
 // Auth
 Route::get('/', fn() => redirect()->route('login'));
@@ -59,6 +62,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::patch('/users/{user}/toggle', [UserController::class, 'toggle'])->name('users.toggle');
+        Route::post('/users/{user}/reassign', [UserController::class, 'reassignTickets'])->name('users.reassign');
 
         // Categories
         Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
@@ -72,6 +76,23 @@ Route::middleware('auth')->group(function () {
         // Activity Logs
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::get('/activity-logs/export', [ActivityLogController::class, 'export'])->name('activity-logs.export');
+
+        // Settings
+        Route::get('/settings/work-schedule', [WorkScheduleController::class, 'index'])->name('settings.work-schedule');
+        Route::post('/settings/work-schedule', [WorkScheduleController::class, 'update'])->name('settings.work-schedule.update');
+        Route::get('/settings/sla', [SlaConfigController::class, 'index'])->name('settings.sla');
+        Route::post('/settings/sla', [SlaConfigController::class, 'update'])->name('settings.sla.update');
+        Route::post('/settings/sla/override', [SlaConfigController::class, 'store'])->name('settings.sla.store');
+        Route::delete('/settings/sla/{slaConfig}', [SlaConfigController::class, 'destroy'])->name('settings.sla.destroy');
+
+        // KB management (supervisor/teknisi)
+        Route::get('/knowledge-base/create', [KbArticleController::class, 'create'])->name('knowledge-base.create');
+        Route::post('/knowledge-base', [KbArticleController::class, 'store'])->name('knowledge-base.store');
+        Route::get('/knowledge-base/{knowledgeBase}/edit', [KbArticleController::class, 'edit'])->name('knowledge-base.edit');
+        Route::patch('/knowledge-base/{knowledgeBase}', [KbArticleController::class, 'update'])->name('knowledge-base.update');
+        Route::delete('/knowledge-base/{knowledgeBase}', [KbArticleController::class, 'destroy'])->name('knowledge-base.destroy');
+        Route::post('/tickets/{ticket}/kb-attach', [KbArticleController::class, 'attachToTicket'])->name('tickets.kb-attach');
+        Route::delete('/tickets/{ticket}/kb-detach/{knowledgeBase}', [KbArticleController::class, 'detachFromTicket'])->name('tickets.kb-detach');
     });
 
     // Notifications
@@ -88,6 +109,11 @@ Route::middleware('auth')->group(function () {
         Route::patch('/ticket-templates/{ticketTemplate}', [TicketTemplateController::class, 'update'])->name('ticket-templates.update');
         Route::delete('/ticket-templates/{ticketTemplate}', [TicketTemplateController::class, 'destroy'])->name('ticket-templates.destroy');
     });
+
+    // Knowledge Base (readable by all auth users)
+    Route::get('/knowledge-base', [KbArticleController::class, 'index'])->name('knowledge-base.index');
+    Route::get('/knowledge-base/search', [KbArticleController::class, 'search'])->name('knowledge-base.search');
+    Route::get('/knowledge-base/{knowledgeBase}', [KbArticleController::class, 'show'])->name('knowledge-base.show');
 
     // Category subcategories (AJAX)
     Route::get('/categories/{category}/subcategories', [CategoryController::class, 'subcategories'])->name('categories.subcategories');

@@ -78,7 +78,7 @@ class TicketController extends Controller
             'user_id' => auth()->id(),
             'ticket_number' => $ticketNumber,
             'status' => 'open',
-            'sla_deadline' => SlaConfig::deadlineFor($data['priority']),
+            'sla_deadline' => SlaConfig::deadlineFor($data['priority'], null, $data['category_id'] ?? null),
         ]);
 
         TicketStatusLog::create([
@@ -128,7 +128,7 @@ class TicketController extends Controller
             'attachments.uploader',
             'statusLogs.user',
             'assignments.assignee', 'assignments.assigner',
-            'rating',
+            'rating', 'kbArticles',
         ]);
 
         $teknisi = $user->isSupervisor() ? User::where('role', 'teknisi')->get() : collect();

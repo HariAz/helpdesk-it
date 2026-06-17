@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\User;
+use App\Models\ActivityLog;
 use App\Models\Ticket;
+use App\Models\TicketAssignment;
+use App\Models\TicketStatusLog;
+use App\Models\User;
+use App\Notifications\TicketNotification;
+use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
@@ -77,5 +81,63 @@ class UserController extends Controller
         $user->update(['is_active' => !$user->is_active]);
         $msg = $user->is_active ? 'diaktifkan' : 'dinonaktifkan';
         return back()->with('success', "Akun berhasil $msg.");
+    }
+
+    public function reassignTickets(Request $request, User $fromUser)
+    {
+        $data = $request->validate([
+            'to_user_id' => 'required|exists:users,id|different:from_user_id',
+            'note'       => 'nullable|string|max:500',
+        ]);
+
+        $toUser = User::findOrFail($data['to_user_id']);
+
+        $activeStatuses = ['open', 'assigned', 'in_progress', 'pending_user', 'reopened'];
+        $tickets = Ticket::where('assigned_to', $fromUser->id)
+            ->whereIn('status', $activeStatuses)
+            ->get();
+
+        if ($tickets->isEmpty()) {
+            return back()->with('error', 'Tidak ada tiket aktif untuk di-reassign.');
+        }
+
+        $note = $data['note'] ?? "Reassign massal dari {$fromUser->name} ke {$toUser->name}";
+
+        foreach ($tickets as $ticket) {
+            $ticket->update(['assigned_to' => $toUser->id]);
+
+            TicketAssignment::create([
+                'ticket_id'       => $ticket->id,
+                'assigned_to'     => $toUser->id,
+                'assigned_by'     => auth()->id(),
+                'unassigned_from' => $fromUser->id,
+                'note'            => $note,
+            ]);
+
+            TicketStatusLog::create([
+                'ticket_id'   => $ticket->id,
+                'user_id'     => auth()->id(),
+                'from_status' => $ticket->status,
+                'to_status'   => $ticket->status,
+                'note'        => $note,
+            ]);
+        }
+
+        // Notify the new assignee
+        $toUser->notify(new TicketNotification(
+            'bulk_assigned',
+            $tickets->first(),
+            "{$tickets->count()} tiket dari {$fromUser->name} di-reassign kepada Anda",
+            'bi-people-fill',
+            'info'
+        ));
+
+        ActivityLog::record('bulk_reassign', null, [
+            'from'   => $fromUser->name,
+            'to'     => $toUser->name,
+            'count'  => $tickets->count(),
+        ]);
+
+        return back()->with('success', "{$tickets->count()} tiket berhasil di-reassign ke {$toUser->name}.");
     }
 }

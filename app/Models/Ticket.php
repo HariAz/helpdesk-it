@@ -60,4 +60,5 @@ class Ticket extends Model
     public function assignments() { return $this->hasMany(TicketAssignment::class); }
     public function rating() { return $this->hasOne(TicketRating::class); }
     public function ratingToken() { return $this->hasOne(RatingToken::class); }
+    public function kbArticles() { return $this->belongsToMany(KbArticle::class, 'ticket_kb_articles')->withPivot('attached_by')->withTimestamps(); }
 }

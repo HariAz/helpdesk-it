@@ -205,6 +205,10 @@
             @endif
         </a>
 
+        <a href="{{ route('knowledge-base.index') }}" class="nav-link {{ request()->routeIs('knowledge-base.*') ? 'active' : '' }}">
+            <i class="bi bi-journal-richtext"></i> Knowledge Base
+        </a>
+
         @if(auth()->user()->isUser())
             <a href="{{ route('tickets.create') }}" class="nav-link {{ request()->routeIs('tickets.create') ? 'active' : '' }}">
                 <i class="bi bi-plus-circle"></i> Buat Tiket
@@ -231,6 +235,13 @@
             </a>
             <a href="{{ route('tickets.trash') }}" class="nav-link {{ request()->routeIs('tickets.trash') ? 'active' : '' }}">
                 <i class="bi bi-trash3"></i> Sampah
+            </a>
+            <div class="nav-section">Pengaturan</div>
+            <a href="{{ route('settings.sla') }}" class="nav-link {{ request()->routeIs('settings.sla*') ? 'active' : '' }}">
+                <i class="bi bi-sliders"></i> Konfigurasi SLA
+            </a>
+            <a href="{{ route('settings.work-schedule') }}" class="nav-link {{ request()->routeIs('settings.work-schedule*') ? 'active' : '' }}">
+                <i class="bi bi-clock"></i> Jadwal Kerja
             </a>
         @endif
     </div>
