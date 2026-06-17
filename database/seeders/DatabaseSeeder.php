@@ -16,45 +16,40 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Users
-        $supervisor = User::create([
+        $supervisor = User::firstOrCreate(['email' => 'supervisor@helpdesk.com'], [
             'name' => 'Ahmad Supervisor',
-            'email' => 'supervisor@helpdesk.com',
             'password' => Hash::make('password123'),
             'role' => 'supervisor',
             'department' => 'IT Management',
             'is_active' => true,
         ]);
 
-        $teknisi1 = User::create([
+        $teknisi1 = User::firstOrCreate(['email' => 'teknisi1@helpdesk.com'], [
             'name' => 'Budi Teknisi',
-            'email' => 'teknisi1@helpdesk.com',
             'password' => Hash::make('password123'),
             'role' => 'teknisi',
             'department' => 'IT Support',
             'is_active' => true,
         ]);
 
-        $teknisi2 = User::create([
+        $teknisi2 = User::firstOrCreate(['email' => 'teknisi2@helpdesk.com'], [
             'name' => 'Citra Teknisi',
-            'email' => 'teknisi2@helpdesk.com',
             'password' => Hash::make('password123'),
             'role' => 'teknisi',
             'department' => 'IT Support',
             'is_active' => true,
         ]);
 
-        $user1 = User::create([
+        $user1 = User::firstOrCreate(['email' => 'user1@helpdesk.com'], [
             'name' => 'Deni User',
-            'email' => 'user1@helpdesk.com',
             'password' => Hash::make('password123'),
             'role' => 'user',
             'department' => 'Keuangan',
             'is_active' => true,
         ]);
 
-        $user2 = User::create([
+        $user2 = User::firstOrCreate(['email' => 'user2@helpdesk.com'], [
             'name' => 'Eka User',
-            'email' => 'user2@helpdesk.com',
             'password' => Hash::make('password123'),
             'role' => 'user',
             'department' => 'HRD',
@@ -62,14 +57,20 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // SLA Configs
-        SlaConfig::insert([
-            ['priority' => 'kritis', 'response_time_hours' => 1, 'resolution_time_hours' => 4],
-            ['priority' => 'tinggi', 'response_time_hours' => 2, 'resolution_time_hours' => 8],
-            ['priority' => 'sedang', 'response_time_hours' => 4, 'resolution_time_hours' => 24],
-            ['priority' => 'rendah', 'response_time_hours' => 8, 'resolution_time_hours' => 72],
-        ]);
+        if (SlaConfig::count() === 0) {
+            SlaConfig::insert([
+                ['priority' => 'kritis', 'response_time_hours' => 1, 'resolution_time_hours' => 4],
+                ['priority' => 'tinggi', 'response_time_hours' => 2, 'resolution_time_hours' => 8],
+                ['priority' => 'sedang', 'response_time_hours' => 4, 'resolution_time_hours' => 24],
+                ['priority' => 'rendah', 'response_time_hours' => 8, 'resolution_time_hours' => 72],
+            ]);
+        }
 
-        // Categories
+        // Categories & Tickets only seed on fresh DB
+        if (Category::count() > 0) {
+            return;
+        }
+
         $categories = [
             ['name' => 'Hardware', 'icon' => 'pc-display', 'children' => ['PC & Laptop', 'Printer & Scanner', 'Peripheral']],
             ['name' => 'Software', 'icon' => 'app-indicator', 'children' => ['Instalasi Aplikasi', 'Error Aplikasi', 'Sistem Operasi']],
