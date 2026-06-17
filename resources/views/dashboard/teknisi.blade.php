@@ -60,6 +60,51 @@
     </div>
 </div>
 
+<!-- Charts row -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom py-3">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-graph-up me-2 text-primary"></i>Progress Harian (14 Hari Terakhir)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="progressChart" height="90"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom py-3">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-pie-chart me-2 text-warning"></i>Tiket Aktif per Prioritas</h6>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-center">
+                @php
+                    $priorityColors = ['kritis' => '#dc2626','tinggi' => '#d97706','sedang' => '#2563eb','rendah' => '#64748b'];
+                    $priorityLabels = ['kritis' => 'Kritis','tinggi' => 'Tinggi','sedang' => 'Sedang','rendah' => 'Rendah'];
+                @endphp
+                @if($workloadPriority->sum() > 0)
+                    <canvas id="priorityChart" height="160"></canvas>
+                @else
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-check-circle fs-2 text-success"></i>
+                        <p class="mt-2 mb-0 small">Semua tiket selesai!</p>
+                    </div>
+                @endif
+                <div class="mt-3">
+                    @foreach(['kritis','tinggi','sedang','rendah'] as $p)
+                        @if(($workloadPriority[$p] ?? 0) > 0)
+                        <div class="d-flex justify-content-between align-items-center small py-1">
+                            <span><span class="badge priority-{{ $p }} px-2">{{ $priorityLabels[$p] }}</span></span>
+                            <span class="fw-bold">{{ $workloadPriority[$p] ?? 0 }}</span>
+                        </div>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- My Tickets -->
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3">
@@ -139,3 +184,52 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+const progressCtx = document.getElementById('progressChart');
+if (progressCtx) {
+    new Chart(progressCtx, {
+        type: 'bar',
+        data: {
+            labels: @json($chartProgress['labels']),
+            datasets: [{
+                label: 'Tiket Diselesaikan',
+                data: @json($chartProgress['data']),
+                backgroundColor: 'rgba(26,86,219,.75)',
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,.06)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+const priorityCtx = document.getElementById('priorityChart');
+if (priorityCtx) {
+    const data = @json($workloadPriority);
+    new Chart(priorityCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Kritis','Tinggi','Sedang','Rendah'],
+            datasets: [{
+                data: [data.kritis||0, data.tinggi||0, data.sedang||0, data.rendah||0],
+                backgroundColor: ['#dc2626','#d97706','#2563eb','#64748b'],
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            cutout: '65%',
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+</script>
+@endpush

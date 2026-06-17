@@ -44,7 +44,7 @@
         /* Sidebar */
         #sidebar {
             width: var(--sidebar-width);
-            min-height: 100vh;
+            height: 100vh;
             background: var(--sidebar-bg);
             position: fixed;
             top: 0; left: 0;
@@ -52,6 +52,7 @@
             transition: transform .25s ease;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         #sidebar .sidebar-brand {
             padding: 1.25rem 1.5rem;
@@ -93,6 +94,15 @@
             font-size: .65rem;
             padding: .2em .5em;
         }
+        #sidebar .sidebar-nav {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,.12) transparent;
+        }
+        #sidebar .sidebar-nav::-webkit-scrollbar { width: 4px; }
+        #sidebar .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        #sidebar .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+        #sidebar .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.25); }
+
         #sidebar .sidebar-user {
             margin-top: auto;
             padding: 1rem 1.25rem;
@@ -224,13 +234,13 @@
         </div>
     </div>
 
-    <div class="py-2 flex-grow-1 overflow-auto">
-        <div class="nav-section">Menu Utama</div>
+    <div class="py-2 flex-grow-1 overflow-auto sidebar-nav">
+        <div class="nav-section">{{ __('app.main_menu') }}</div>
         <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-            <i class="bi bi-speedometer2"></i> Dashboard
+            <i class="bi bi-speedometer2"></i> {{ __('app.dashboard') }}
         </a>
         <a href="{{ route('tickets.index') }}" class="nav-link {{ request()->routeIs('tickets.*') && !request()->routeIs('tickets.trash') ? 'active' : '' }}">
-            <i class="bi bi-ticket-detailed"></i> Tiket
+            <i class="bi bi-ticket-detailed"></i> {{ __('app.tickets') }}
             @if(auth()->user()->isTeknisi())
                 @php $unassignedCount = \App\Models\Ticket::whereNull('assigned_to')->whereNotIn('status', ['closed','cancelled'])->count(); @endphp
                 @if($unassignedCount > 0)
@@ -252,51 +262,51 @@
         </a>
 
         <a href="{{ route('knowledge-base.index') }}" class="nav-link {{ request()->routeIs('knowledge-base.*') ? 'active' : '' }}">
-            <i class="bi bi-journal-richtext"></i> Knowledge Base
+            <i class="bi bi-journal-richtext"></i> {{ __('app.knowledge_base') }}
         </a>
 
         @if(auth()->user()->isUser())
             <a href="{{ route('tickets.create') }}" class="nav-link {{ request()->routeIs('tickets.create') ? 'active' : '' }}">
-                <i class="bi bi-plus-circle"></i> Buat Tiket
+                <i class="bi bi-plus-circle"></i> {{ __('app.create_ticket') }}
             </a>
         @endif
 
         @if(auth()->user()->isSupervisor())
-            <div class="nav-section">Manajemen</div>
+            <div class="nav-section">{{ __('app.management') }}</div>
             <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                <i class="bi bi-people"></i> Pengguna
+                <i class="bi bi-people"></i> {{ __('app.users') }}
             </a>
             <a href="{{ route('categories.index') }}" class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
-                <i class="bi bi-tags"></i> Kategori
+                <i class="bi bi-tags"></i> {{ __('app.categories') }}
             </a>
             <a href="{{ route('ticket-templates.index') }}" class="nav-link {{ request()->routeIs('ticket-templates.*') ? 'active' : '' }}">
-                <i class="bi bi-file-earmark-text"></i> Template Tiket
+                <i class="bi bi-file-earmark-text"></i> {{ __('app.ticket_templates') }}
             </a>
-            <div class="nav-section">Laporan</div>
+            <div class="nav-section">{{ __('app.reports_section') }}</div>
             <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-                <i class="bi bi-bar-chart-line"></i> Laporan
+                <i class="bi bi-bar-chart-line"></i> {{ __('app.reports') }}
             </a>
             <a href="{{ route('activity-logs.index') }}" class="nav-link {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
-                <i class="bi bi-clock-history"></i> Log Aktivitas
+                <i class="bi bi-clock-history"></i> {{ __('app.activity_logs') }}
             </a>
             <a href="{{ route('tickets.trash') }}" class="nav-link {{ request()->routeIs('tickets.trash') ? 'active' : '' }}">
-                <i class="bi bi-trash3"></i> Sampah
+                <i class="bi bi-trash3"></i> {{ __('app.trash') }}
             </a>
-            <div class="nav-section">Pengaturan</div>
+            <div class="nav-section">{{ __('app.settings') }}</div>
             <a href="{{ route('settings.sla') }}" class="nav-link {{ request()->routeIs('settings.sla*') ? 'active' : '' }}">
-                <i class="bi bi-sliders"></i> Konfigurasi SLA
+                <i class="bi bi-sliders"></i> {{ __('app.sla_config') }}
             </a>
             <a href="{{ route('settings.work-schedule') }}" class="nav-link {{ request()->routeIs('settings.work-schedule*') ? 'active' : '' }}">
-                <i class="bi bi-clock"></i> Jadwal Kerja
+                <i class="bi bi-clock"></i> {{ __('app.work_schedule') }}
             </a>
             <a href="{{ route('settings.integrations') }}" class="nav-link {{ request()->routeIs('settings.integrations*') ? 'active' : '' }}">
-                <i class="bi bi-plug"></i> Integrasi
+                <i class="bi bi-plug"></i> {{ __('app.integrations') }}
             </a>
             <a href="{{ route('settings.webhooks') }}" class="nav-link {{ request()->routeIs('settings.webhooks*') ? 'active' : '' }}">
-                <i class="bi bi-broadcast"></i> Webhook
+                <i class="bi bi-broadcast"></i> {{ __('app.webhooks') }}
             </a>
             <a href="{{ route('settings.api-tokens') }}" class="nav-link {{ request()->routeIs('settings.api-tokens*') ? 'active' : '' }}">
-                <i class="bi bi-key"></i> API Token
+                <i class="bi bi-key"></i> {{ __('app.api_tokens') }}
             </a>
         @endif
     </div>
@@ -310,7 +320,7 @@
             </div>
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
-                <button type="submit" class="btn btn-sm btn-link text-secondary p-0" title="Logout">
+                <button type="submit" class="btn btn-sm btn-link text-secondary p-0" title="{{ __('app.logout') }}">
                     <i class="bi bi-box-arrow-right"></i>
                 </button>
             </form>
@@ -336,11 +346,28 @@
             {{ now()->isoFormat('dddd, D MMMM YYYY') }}
         </div>
 
+        <!-- Language switcher -->
+        <div class="dropdown">
+            <button class="btn btn-sm btn-light dropdown-toggle px-2" data-bs-toggle="dropdown" title="Ganti bahasa / Change language" style="font-size:.8rem;">
+                @if(app()->getLocale() === 'id')
+                    🇮🇩 <span class="d-none d-md-inline">ID</span>
+                @else
+                    🇬🇧 <span class="d-none d-md-inline">EN</span>
+                @endif
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width:130px;">
+                <li><a class="dropdown-item small {{ app()->getLocale()==='id' ? 'active' : '' }}"
+                       href="{{ route('locale.switch', 'id') }}">🇮🇩 Indonesia</a></li>
+                <li><a class="dropdown-item small {{ app()->getLocale()==='en' ? 'active' : '' }}"
+                       href="{{ route('locale.switch', 'en') }}">🇬🇧 English</a></li>
+            </ul>
+        </div>
+
         <button id="darkToggle" class="btn btn-sm btn-light" title="Toggle dark mode" onclick="toggleDark()">
             <i class="bi bi-moon-stars" id="darkIcon"></i>
         </button>
         <button id="pwaInstallBtn" class="btn btn-sm btn-outline-primary d-none" title="Install app">
-            <i class="bi bi-phone-vibrate me-1"></i><span class="d-none d-md-inline">Install</span>
+            <i class="bi bi-phone-vibrate me-1"></i><span class="d-none d-md-inline">{{ __('app.install_app') }}</span>
         </button>
 
         @php $unreadCount = auth()->user()->unreadNotifications()->count(); @endphp

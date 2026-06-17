@@ -102,10 +102,17 @@
                                 <span class="badge bg-{{ $actionColor }}-subtle text-{{ $actionColor }} small">
                                     {{ str_replace('_', ' ', $log->action) }}
                                 </span>
-                                @if($log->properties)
-                                    <div class="text-muted" style="font-size:.72rem; margin-top:.2rem;">
-                                        @foreach($log->properties as $k => $v)
-                                            <span>{{ $k }}: {{ is_array($v) ? json_encode($v) : $v }}</span>
+                                @if(!empty($log->changes))
+                                    <div class="mt-1">
+                                        @foreach($log->changes as $field => $diff)
+                                            @if(is_array($diff) && isset($diff['before'], $diff['after']))
+                                            <div class="d-flex align-items-center gap-1 flex-wrap" style="font-size:.72rem;">
+                                                <span class="text-muted fw-semibold text-uppercase" style="letter-spacing:.04em;">{{ str_replace('_',' ',$field) }}:</span>
+                                                <span class="badge bg-danger-subtle text-danger px-2 py-0" style="text-decoration:line-through; font-weight:400;">{{ $diff['before'] }}</span>
+                                                <i class="bi bi-arrow-right text-muted"></i>
+                                                <span class="badge bg-success-subtle text-success px-2 py-0">{{ $diff['after'] }}</span>
+                                            </div>
+                                            @endif
                                         @endforeach
                                     </div>
                                 @endif

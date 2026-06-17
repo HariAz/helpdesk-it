@@ -20,6 +20,10 @@ use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\SavedFilterController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\ApiTokenController;
+use App\Http\Controllers\LocaleController;
+
+// Locale
+Route::get('/locale/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
 
 // Auth
 Route::get('/', fn() => redirect()->route('login'));

@@ -69,9 +69,19 @@ class DashboardController extends Controller
                 ->selectRaw('category_id, COUNT(*) as cnt')->groupBy('category_id')->get()
                 ->map(fn($r) => ['label' => $r->category?->name ?? 'Tanpa Kategori', 'count' => (int)$r->cnt]);
 
+            // Chart: workload per teknisi (active tickets)
+            $workload = User::where('role', 'teknisi')
+                ->withCount([
+                    'assignedTickets as active_count' => fn($q) => $q->whereNotIn('status', ['closed', 'cancelled']),
+                    'assignedTickets as resolved_month' => fn($q) => $q->where('status', 'closed')
+                        ->whereMonth('resolved_at', now()->month)->whereYear('resolved_at', now()->year),
+                ])
+                ->orderByDesc('active_count')
+                ->get();
+
             return view('dashboard.supervisor', compact(
                 'stats', 'nearSla', 'recentActivity', 'topTeknisi',
-                'chartTrend', 'chartHeatmap', 'heatmapMax', 'categoryPie'
+                'chartTrend', 'chartHeatmap', 'heatmapMax', 'categoryPie', 'workload'
             ));
         }
 
@@ -90,7 +100,25 @@ class DashboardController extends Controller
                 'pending_user' => Ticket::where('assigned_to', $user->id)->where('status', 'pending_user')->count(),
             ];
 
-            return view('dashboard.teknisi', compact('myTickets', 'stats'));
+            // Chart: progress harian last 14 days
+            $progressDays = collect(range(13, 0))->map(fn($i) => now()->subDays($i)->format('Y-m-d'));
+            $resolvedByDay = Ticket::where('assigned_to', $user->id)
+                ->whereNotNull('resolved_at')
+                ->whereBetween('resolved_at', [now()->subDays(13)->startOfDay(), now()->endOfDay()])
+                ->selectRaw('DATE(resolved_at) as date, COUNT(*) as cnt')
+                ->groupBy('date')->pluck('cnt', 'date');
+            $chartProgress = [
+                'labels' => $progressDays->map(fn($d) => Carbon::parse($d)->format('d M'))->values()->toArray(),
+                'data'   => $progressDays->map(fn($d) => (int)($resolvedByDay[$d] ?? 0))->values()->toArray(),
+            ];
+
+            // Workload by priority
+            $workloadPriority = Ticket::where('assigned_to', $user->id)
+                ->whereNotIn('status', ['closed', 'cancelled'])
+                ->selectRaw("priority, COUNT(*) as cnt")
+                ->groupBy('priority')->pluck('cnt', 'priority');
+
+            return view('dashboard.teknisi', compact('myTickets', 'stats', 'chartProgress', 'workloadPriority'));
         }
 
         // User role

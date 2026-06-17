@@ -171,7 +171,9 @@ class TicketController extends Controller
             'note' => $data['note'],
         ]);
 
-        ActivityLog::record('ticket_status_updated', $ticket, ['from' => $oldStatus, 'to' => $data['status']]);
+        ActivityLog::record('ticket_status_updated', $ticket, [], [
+            'status' => ['before' => $oldStatus, 'after' => $data['status']],
+        ]);
 
         // In-app notification to ticket owner
         $statusLabel = \App\Models\Ticket::STATUS_LABELS[$data['status']] ?? $data['status'];
@@ -210,7 +212,13 @@ class TicketController extends Controller
             'note' => 'Tiket di-assign ke teknisi',
         ]);
 
-        ActivityLog::record('ticket_assigned', $ticket);
+        $oldName = $oldAssignee ? User::find($oldAssignee)?->name : null;
+        ActivityLog::record('ticket_assigned', $ticket, [], [
+            'assigned_to' => [
+                'before' => $oldName ?? '(Belum di-assign)',
+                'after'  => User::find($data['assigned_to'])?->name,
+            ],
+        ]);
 
         // In-app notification to assigned teknisi
         $assignee = User::find($data['assigned_to']);
@@ -228,8 +236,11 @@ class TicketController extends Controller
     public function updatePriority(Request $request, Ticket $ticket)
     {
         $request->validate(['priority' => 'required|in:kritis,tinggi,sedang,rendah']);
+        $oldPriority = $ticket->priority;
         $ticket->update(['priority' => $request->priority]);
-        ActivityLog::record('ticket_priority_updated', $ticket, ['priority' => $request->priority]);
+        ActivityLog::record('ticket_priority_updated', $ticket, [], [
+            'priority' => ['before' => $oldPriority, 'after' => $request->priority],
+        ]);
         return back()->with('success', 'Prioritas tiket diperbarui.');
     }
 

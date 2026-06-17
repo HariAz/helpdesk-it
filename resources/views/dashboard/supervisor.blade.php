@@ -158,6 +158,52 @@
     </div>
 </div>
 
+<!-- Workload Teknisi -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-people text-primary me-2"></i>Workload Teknisi — Tiket Aktif</h6>
+        <a href="{{ route('users.index') }}" class="btn btn-sm btn-outline-secondary">Kelola Teknisi</a>
+    </div>
+    <div class="card-body">
+        @if($workload->count())
+        <div class="row g-3 align-items-start">
+            <div class="col-lg-7">
+                <canvas id="workloadChart" height="80"></canvas>
+            </div>
+            <div class="col-lg-5">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Teknisi</th>
+                                <th class="text-center">Aktif</th>
+                                <th class="text-center">Selesai Bulan Ini</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($workload as $tek)
+                            <tr>
+                                <td class="small fw-semibold">{{ $tek->name }}</td>
+                                <td class="text-center">
+                                    <span class="badge {{ $tek->active_count > 10 ? 'bg-danger' : ($tek->active_count > 5 ? 'bg-warning text-dark' : 'bg-success') }}-subtle
+                                        text-{{ $tek->active_count > 10 ? 'danger' : ($tek->active_count > 5 ? 'warning' : 'success') }}">
+                                        {{ $tek->active_count }}
+                                    </span>
+                                </td>
+                                <td class="text-center small text-muted">{{ $tek->resolved_month }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @else
+            <p class="text-muted text-center py-3 mb-0">Belum ada teknisi terdaftar.</p>
+        @endif
+    </div>
+</div>
+
 <div class="row g-3">
     <!-- Near SLA -->
     <div class="col-lg-8">
@@ -322,6 +368,45 @@ Chart.defaults.color = '#64748b';
                     maxTicksLimit: 10,
                     maxRotation: 0,
                 }},
+            }
+        }
+    });
+})();
+
+// Workload Teknisi Chart
+(function() {
+    const ctx = document.getElementById('workloadChart');
+    if (!ctx) return;
+    const workload = @json($workload->map(fn($t) => ['name' => $t->name, 'active' => $t->active_count, 'resolved' => $t->resolved_month]));
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: workload.map(w => w.name),
+            datasets: [
+                {
+                    label: 'Tiket Aktif',
+                    data: workload.map(w => w.active),
+                    backgroundColor: 'rgba(26,86,219,.75)',
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Selesai Bulan Ini',
+                    data: workload.map(w => w.resolved),
+                    backgroundColor: 'rgba(22,163,74,.6)',
+                    borderRadius: 4,
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12 } },
+            },
+            scales: {
+                x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f1f5f9' } },
+                y: { grid: { display: false } }
             }
         }
     });
