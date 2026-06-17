@@ -92,8 +92,54 @@
             <div class="col-auto d-flex gap-2">
                 <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel me-1"></i> Filter</button>
                 <a href="{{ route('tickets.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+                <button type="button" class="btn btn-outline-success btn-sm" onclick="saveCurrentFilter()" title="Simpan filter ini">
+                    <i class="bi bi-bookmark-plus"></i>
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="savedFiltersBtn" data-bs-toggle="dropdown">
+                        <i class="bi bi-bookmark"></i>
+                    </button>
+                    <ul class="dropdown-menu" id="savedFiltersList" style="min-width:220px;">
+                        <li><span class="dropdown-item text-muted small">Memuat...</span></li>
+                    </ul>
+                </div>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Bulk Action Toolbar (hidden until rows selected) -->
+<div id="bulkToolbar" class="card border-0 shadow-sm mb-3 border-primary" style="display:none; border-left:4px solid #1a56db !important;">
+    <div class="card-body py-2 px-3 d-flex align-items-center gap-3 flex-wrap">
+        <span class="small fw-semibold text-primary"><i class="bi bi-check-square me-1"></i><span id="bulkCount">0</span> tiket dipilih</span>
+        <form id="bulkForm" method="POST" action="{{ route('tickets.bulk-action') }}">
+            @csrf
+            <input type="hidden" name="action" id="bulkAction">
+            <div id="bulkTicketIds"></div>
+            @if(auth()->user()->isSupervisor())
+            <select name="assigned_to" id="bulkAssignTo" class="form-select form-select-sm d-none" style="width:auto;">
+                <option value="">— Pilih teknisi —</option>
+                @foreach($teknisi as $tek)
+                <option value="{{ $tek->id }}">{{ $tek->name }}</option>
+                @endforeach
+            </select>
+            @endif
+        </form>
+        @if(auth()->user()->isSupervisor())
+        <button class="btn btn-sm btn-outline-primary" onclick="triggerBulk('assign')">
+            <i class="bi bi-person-check me-1"></i> Assign
+        </button>
+        <button class="btn btn-sm btn-outline-success" onclick="triggerBulk('close')">
+            <i class="bi bi-check-circle me-1"></i> Tutup
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="triggerBulk('cancel')">
+            <i class="bi bi-x-circle me-1"></i> Batalkan
+        </button>
+        @endif
+        <button class="btn btn-sm btn-outline-secondary" onclick="triggerBulk('export')">
+            <i class="bi bi-download me-1"></i> Export
+        </button>
+        <button class="btn btn-sm btn-link text-muted" onclick="clearSelection()">Batalkan Pilihan</button>
     </div>
 </div>
 
@@ -110,6 +156,9 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
+                            <th style="width:2.5rem;">
+                                <input type="checkbox" class="form-check-input" id="selectAll" title="Pilih semua">
+                            </th>
                             <th>
                                 <a href="{{ route('tickets.index', array_merge(request()->query(), ['sort' => 'ticket_number', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}"
                                    class="text-decoration-none text-muted d-flex align-items-center gap-1">
@@ -149,6 +198,9 @@
                                 }
                             @endphp
                             <tr class="{{ $ticket->is_escalated ? 'table-danger' : '' }}">
+                                <td>
+                                    <input type="checkbox" class="form-check-input ticket-cb" value="{{ $ticket->id }}" data-id="{{ $ticket->id }}">
+                                </td>
                                 <td>
                                     <span class="ticket-number">{{ $ticket->ticket_number }}</span>
                                     @if($ticket->is_escalated)
@@ -204,3 +256,103 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+// ── Bulk Actions ──────────────────────────────────────────────────
+const selectAll = document.getElementById('selectAll');
+const toolbar   = document.getElementById('bulkToolbar');
+const bulkCount = document.getElementById('bulkCount');
+const bulkIds   = document.getElementById('bulkTicketIds');
+const assignSel = document.getElementById('bulkAssignTo');
+
+function getChecked() { return [...document.querySelectorAll('.ticket-cb:checked')]; }
+
+function updateToolbar() {
+    const checked = getChecked();
+    toolbar.style.display = checked.length ? 'block' : 'none';
+    bulkCount.textContent = checked.length;
+    bulkIds.innerHTML = checked.map(cb => `<input type="hidden" name="ticket_ids[]" value="${cb.value}">`).join('');
+}
+
+selectAll?.addEventListener('change', function() {
+    document.querySelectorAll('.ticket-cb').forEach(cb => cb.checked = this.checked);
+    updateToolbar();
+});
+
+document.querySelectorAll('.ticket-cb').forEach(cb => cb.addEventListener('change', () => {
+    const all = document.querySelectorAll('.ticket-cb');
+    const checked = getChecked();
+    selectAll.checked = checked.length === all.length;
+    selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+    updateToolbar();
+}));
+
+function clearSelection() {
+    document.querySelectorAll('.ticket-cb').forEach(cb => cb.checked = false);
+    if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
+    updateToolbar();
+}
+
+function triggerBulk(action) {
+    if (!getChecked().length) return;
+    if (action === 'assign') {
+        if (!assignSel) return;
+        assignSel.classList.remove('d-none');
+        if (!assignSel.value) { assignSel.focus(); return; }
+    }
+    if ((action === 'close' || action === 'cancel') && !confirm(`Terapkan aksi "${action}" ke ${getChecked().length} tiket yang dipilih?`)) return;
+    document.getElementById('bulkAction').value = action;
+    document.getElementById('bulkForm').submit();
+}
+
+// ── Saved Filters ─────────────────────────────────────────────────
+const savedFiltersBtn  = document.getElementById('savedFiltersBtn');
+const savedFiltersList = document.getElementById('savedFiltersList');
+
+function loadSavedFilters() {
+    fetch('/saved-filters').then(r => r.json()).then(filters => {
+        if (!filters.length) {
+            savedFiltersList.innerHTML = '<li><span class="dropdown-item text-muted small">Belum ada filter tersimpan.</span></li>';
+            return;
+        }
+        savedFiltersList.innerHTML = filters.map(f =>
+            `<li class="d-flex align-items-center px-2">
+                <a class="dropdown-item flex-grow-1 small py-1" href="#" onclick="applyFilter(${JSON.stringify(f.filters)}); return false;">
+                    <i class="bi bi-bookmark-fill me-1 text-primary"></i>${f.name}
+                </a>
+                <button class="btn btn-link btn-sm p-0 text-danger" onclick="deleteFilter(${f.id})" title="Hapus">
+                    <i class="bi bi-trash" style="font-size:.75rem;"></i>
+                </button>
+            </li>`
+        ).join('') + '<li><hr class="dropdown-divider"><li><span class="dropdown-item text-muted" style="font-size:.72rem;">Klik nama filter untuk menerapkan</span></li>';
+    });
+}
+
+savedFiltersBtn?.addEventListener('show.bs.dropdown', loadSavedFilters);
+
+function applyFilter(filters) {
+    window.location.href = '/tickets?' + new URLSearchParams(filters).toString();
+}
+
+function saveCurrentFilter() {
+    const name = prompt('Nama filter ini:');
+    if (!name) return;
+    const params = Object.fromEntries(new URLSearchParams(window.location.search).entries());
+    delete params.page;
+    fetch('/saved-filters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+        body: JSON.stringify({ name, filters: params })
+    }).then(r => r.json()).then(d => { if (d.message) alert(d.message); });
+}
+
+function deleteFilter(id) {
+    if (!confirm('Hapus filter ini?')) return;
+    fetch(`/saved-filters/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+    }).then(() => loadSavedFilters());
+}
+</script>
+@endpush

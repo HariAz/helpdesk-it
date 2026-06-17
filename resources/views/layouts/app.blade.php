@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') — Helpdesk IT</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a56db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Helpdesk IT">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
@@ -14,8 +20,26 @@
             --sidebar-bg: #0f172a;
             --sidebar-hover: #1e293b;
             --accent: #f97316;
+            --body-bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-color: #0f172a;
+            --border-color: #e2e8f0;
+            --topbar-bg: #ffffff;
+            --input-bg: #ffffff;
+            --table-head-bg: #f8fafc;
+            --muted: #64748b;
         }
-        body { background: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
+        [data-theme="dark"] {
+            --body-bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --border-color: #334155;
+            --topbar-bg: #1e293b;
+            --input-bg: #0f172a;
+            --table-head-bg: #1e293b;
+            --muted: #94a3b8;
+        }
+        body { background: var(--body-bg); font-family: 'Segoe UI', sans-serif; color: var(--text-color); transition: background .2s, color .2s; }
 
         /* Sidebar */
         #sidebar {
@@ -91,8 +115,8 @@
 
         /* Topbar */
         #topbar {
-            background: #fff;
-            border-bottom: 1px solid #e2e8f0;
+            background: var(--topbar-bg);
+            border-bottom: 1px solid var(--border-color);
             padding: .75rem 1.5rem;
             position: sticky; top: 0; z-index: 1030;
         }
@@ -103,6 +127,28 @@
         .page-content { padding: 1.5rem; }
         .page-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; margin-bottom: .25rem; }
         .page-subtitle { color: #64748b; font-size: .875rem; }
+
+        /* Dark mode card/form overrides */
+        [data-theme="dark"] .card,
+        [data-theme="dark"] .modal-content { background: var(--card-bg) !important; border-color: var(--border-color) !important; color: var(--text-color); }
+        [data-theme="dark"] .card-header,
+        [data-theme="dark"] .table thead th { background: var(--table-head-bg) !important; border-color: var(--border-color) !important; color: var(--muted); }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select { background: var(--input-bg); border-color: var(--border-color); color: var(--text-color); }
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus { background: var(--input-bg); color: var(--text-color); }
+        [data-theme="dark"] .table,
+        [data-theme="dark"] .table td { border-color: var(--border-color); color: var(--text-color); }
+        [data-theme="dark"] .table-hover>tbody>tr:hover>td { background-color: rgba(255,255,255,.04); }
+        [data-theme="dark"] .bg-white { background: var(--card-bg) !important; }
+        [data-theme="dark"] .text-dark { color: var(--text-color) !important; }
+        [data-theme="dark"] .border-bottom { border-color: var(--border-color) !important; }
+        [data-theme="dark"] .alert { border-color: var(--border-color); }
+        [data-theme="dark"] .page-title { color: var(--text-color); }
+        [data-theme="dark"] .nav-tabs .nav-link { color: var(--muted); }
+        [data-theme="dark"] .nav-tabs .nav-link.active { color: var(--text-color); background: var(--card-bg); border-color: var(--border-color); }
+        [data-theme="dark"] pre, [data-theme="dark"] .bg-light { background: var(--input-bg) !important; color: var(--text-color); }
+        [data-theme="dark"] code { color: #93c5fd; }
 
         /* Cards */
         .stat-card { border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
@@ -290,6 +336,13 @@
             {{ now()->isoFormat('dddd, D MMMM YYYY') }}
         </div>
 
+        <button id="darkToggle" class="btn btn-sm btn-light" title="Toggle dark mode" onclick="toggleDark()">
+            <i class="bi bi-moon-stars" id="darkIcon"></i>
+        </button>
+        <button id="pwaInstallBtn" class="btn btn-sm btn-outline-primary d-none" title="Install app">
+            <i class="bi bi-phone-vibrate me-1"></i><span class="d-none d-md-inline">Install</span>
+        </button>
+
         @php $unreadCount = auth()->user()->unreadNotifications()->count(); @endphp
         <a href="{{ route('notifications.index') }}"
            class="btn btn-sm btn-light position-relative {{ request()->routeIs('notifications.*') ? 'active' : '' }}"
@@ -348,6 +401,47 @@
             bsAlert.close();
         });
     }, 5000);
+
+    // Dark mode
+    function applyTheme(dark) {
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        document.getElementById('darkIcon').className = dark ? 'bi bi-sun' : 'bi bi-moon-stars';
+    }
+    function toggleDark() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const next = !isDark;
+        localStorage.setItem('theme', next ? 'dark' : 'light');
+        applyTheme(next);
+    }
+    (function() {
+        const saved = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        applyTheme(saved === 'dark');
+    })();
+
+    // PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    // PWA Install prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const btn = document.getElementById('pwaInstallBtn');
+        if (btn) btn.classList.remove('d-none');
+    });
+    document.getElementById('pwaInstallBtn')?.addEventListener('click', () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => {
+            deferredPrompt = null;
+            document.getElementById('pwaInstallBtn')?.classList.add('d-none');
+        });
+    });
+    window.addEventListener('appinstalled', () => {
+        document.getElementById('pwaInstallBtn')?.classList.add('d-none');
+    });
 </script>
 @stack('scripts')
 </body>

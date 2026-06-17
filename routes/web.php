@@ -17,6 +17,7 @@ use App\Http\Controllers\SlaConfigController;
 use App\Http\Controllers\TicketTemplateController;
 use App\Http\Controllers\WorkScheduleController;
 use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\SavedFilterController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\ApiTokenController;
 
@@ -34,7 +35,13 @@ Route::post('/rating/{token}', [RatingController::class, 'store'])->name('rating
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Saved filters (AJAX)
+    Route::get('/saved-filters', [SavedFilterController::class, 'index'])->name('saved-filters.index');
+    Route::post('/saved-filters', [SavedFilterController::class, 'store'])->name('saved-filters.store');
+    Route::delete('/saved-filters/{savedFilter}', [SavedFilterController::class, 'destroy'])->name('saved-filters.destroy');
+
     // Tickets
+    Route::post('/tickets/bulk-action', [TicketController::class, 'bulkAction'])->name('tickets.bulk-action');
     Route::get('/tickets/export', [TicketController::class, 'export'])->name('tickets.export');
     Route::get('/tickets/trash', [TicketController::class, 'trash'])->name('tickets.trash')->middleware('role:supervisor');
     Route::patch('/tickets/{id}/restore', [TicketController::class, 'restore'])->name('tickets.restore')->middleware('role:supervisor');

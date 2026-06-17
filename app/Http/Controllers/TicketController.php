@@ -240,6 +240,62 @@ class TicketController extends Controller
         return redirect()->route('tickets.index')->with('success', 'Tiket dihapus.');
     }
 
+    public function bulkAction(Request $request)
+    {
+        $data = $request->validate([
+            'action'     => 'required|in:assign,close,cancel,export',
+            'ticket_ids' => 'required|array|min:1',
+            'ticket_ids.*' => 'integer|exists:tickets,id',
+            'assigned_to'  => 'required_if:action,assign|nullable|exists:users,id',
+        ]);
+
+        $user    = auth()->user();
+        $tickets = Ticket::whereIn('id', $data['ticket_ids'])
+            ->when($user->isTeknisi(), fn($q) => $q->where('assigned_to', $user->id))
+            ->get();
+
+        if ($data['action'] === 'export') {
+            $headers  = ['Content-Type' => 'text/csv; charset=UTF-8'];
+            $callback = function () use ($tickets) {
+                $file = fopen('php://output', 'w');
+                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+                fputcsv($file, ['No. Tiket','Judul','Status','Prioritas','Pelapor','Teknisi','Dibuat']);
+                foreach ($tickets as $t) {
+                    fputcsv($file, [$t->ticket_number, $t->title, $t->status, $t->priority,
+                        $t->user?->name, $t->assignee?->name ?? '-', $t->created_at->format('Y-m-d H:i')]);
+                }
+                fclose($file);
+            };
+            return response()->streamDownload($callback, 'tiket-pilihan-'.now()->format('Ymd').'.csv', $headers);
+        }
+
+        foreach ($tickets as $ticket) {
+            match ($data['action']) {
+                'assign' => (function () use ($ticket, $data, $user) {
+                    $ticket->update(['assigned_to' => $data['assigned_to'], 'status' => 'assigned']);
+                    TicketStatusLog::create(['ticket_id' => $ticket->id, 'user_id' => $user->id,
+                        'from_status' => $ticket->getOriginal('status'), 'to_status' => 'assigned', 'note' => 'Bulk assign']);
+                    ActivityLog::record('ticket_assigned', $ticket, ['assigned_to' => $data['assigned_to']]);
+                })(),
+                'close' => (function () use ($ticket, $user) {
+                    $ticket->update(['status' => 'closed', 'closed_at' => now()]);
+                    TicketStatusLog::create(['ticket_id' => $ticket->id, 'user_id' => $user->id,
+                        'from_status' => $ticket->status, 'to_status' => 'closed', 'note' => 'Bulk close']);
+                    ActivityLog::record('ticket_closed', $ticket);
+                })(),
+                'cancel' => (function () use ($ticket, $user) {
+                    $ticket->update(['status' => 'cancelled']);
+                    TicketStatusLog::create(['ticket_id' => $ticket->id, 'user_id' => $user->id,
+                        'from_status' => $ticket->status, 'to_status' => 'cancelled', 'note' => 'Bulk cancel']);
+                    ActivityLog::record('ticket_cancelled', $ticket);
+                })(),
+                default => null,
+            };
+        }
+
+        return back()->with('success', "Aksi bulk berhasil diterapkan ke {$tickets->count()} tiket.");
+    }
+
     public function trash()
     {
         $tickets = Ticket::onlyTrashed()->with('user')->paginate(20);
