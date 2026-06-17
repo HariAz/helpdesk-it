@@ -219,6 +219,9 @@
             <a href="{{ route('categories.index') }}" class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
                 <i class="bi bi-tags"></i> Kategori
             </a>
+            <a href="{{ route('ticket-templates.index') }}" class="nav-link {{ request()->routeIs('ticket-templates.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-text"></i> Template Tiket
+            </a>
             <div class="nav-section">Laporan</div>
             <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                 <i class="bi bi-bar-chart-line"></i> Laporan
@@ -266,6 +269,19 @@
             <i class="bi bi-calendar3"></i>
             {{ now()->isoFormat('dddd, D MMMM YYYY') }}
         </div>
+
+        @php $unreadCount = auth()->user()->unreadNotifications()->count(); @endphp
+        <a href="{{ route('notifications.index') }}"
+           class="btn btn-sm btn-light position-relative {{ request()->routeIs('notifications.*') ? 'active' : '' }}"
+           title="Notifikasi">
+            <i class="bi bi-bell fs-6"></i>
+            @if($unreadCount > 0)
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                      style="font-size:.6rem; padding:.2em .4em;">
+                    {{ $unreadCount > 99 ? '99+' : $unreadCount }}
+                </span>
+            @endif
+        </a>
     </div>
 
     <!-- Content -->

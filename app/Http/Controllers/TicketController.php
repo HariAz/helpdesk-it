@@ -15,6 +15,7 @@ use App\Models\Ticket;
 use App\Models\TicketAssignment;
 use App\Models\TicketStatusLog;
 use App\Models\User;
+use App\Notifications\TicketNotification;
 use Illuminate\Support\Str;
 
 class TicketController extends Controller
@@ -104,6 +105,12 @@ class TicketController extends Controller
 
         ActivityLog::record('ticket_created', $ticket, ['ticket_number' => $ticket->ticket_number]);
 
+        // In-app notification to supervisors
+        User::where('role', 'supervisor')->where('is_active', true)->each(
+            fn($s) => $s->notify(new TicketNotification('new_ticket', $ticket,
+                "Tiket baru {$ticket->ticket_number}: {$ticket->title}", 'bi-plus-circle', 'primary'))
+        );
+
         SendNewTicketNotification::dispatch($ticket);
 
         return redirect()->route('tickets.show', $ticket)->with('success', 'Tiket berhasil dibuat: ' . $ticketNumber);
@@ -162,6 +169,11 @@ class TicketController extends Controller
 
         ActivityLog::record('ticket_status_updated', $ticket, ['from' => $oldStatus, 'to' => $data['status']]);
 
+        // In-app notification to ticket owner
+        $statusLabel = \App\Models\Ticket::STATUS_LABELS[$data['status']] ?? $data['status'];
+        $ticket->user->notify(new TicketNotification('status_changed', $ticket,
+            "Status tiket {$ticket->ticket_number} berubah menjadi {$statusLabel}", 'bi-arrow-repeat', 'info'));
+
         SendTicketStatusChangedNotification::dispatch($ticket->fresh(), $oldStatus, $data['status'], $data['note']);
 
         return back()->with('success', 'Status tiket diperbarui.');
@@ -194,6 +206,13 @@ class TicketController extends Controller
         ]);
 
         ActivityLog::record('ticket_assigned', $ticket);
+
+        // In-app notification to assigned teknisi
+        $assignee = User::find($data['assigned_to']);
+        if ($assignee) {
+            $assignee->notify(new TicketNotification('assigned', $ticket,
+                "Tiket {$ticket->ticket_number} di-assign kepada Anda", 'bi-person-check', 'success'));
+        }
 
         SendTicketAssignedNotification::dispatch($ticket->fresh());
 

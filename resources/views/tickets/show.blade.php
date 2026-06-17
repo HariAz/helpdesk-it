@@ -221,7 +221,18 @@
                                                     <span class="fw-semibold small">{{ $comment->user->name }}</span>
                                                     <span class="text-muted" style="font-size:.72rem;">{{ $comment->created_at->diffForHumans() }}</span>
                                                 </div>
-                                                <div style="font-size:.875rem; white-space:pre-wrap;">{{ $comment->body }}</div>
+                                                <div style="font-size:.875rem; white-space:pre-wrap;">{!! preg_replace('/@([\w\s]{2,40})/', '<span class="badge bg-warning-subtle text-warning-emphasis">@$1</span>', e($comment->body)) !!}</div>
+                                                @if($comment->attachments->count())
+                                                <div class="mt-2 d-flex flex-wrap gap-1">
+                                                    @foreach($comment->attachments as $att)
+                                                    <a href="{{ route('attachments.download', $att) }}"
+                                                       class="badge bg-light text-secondary border text-decoration-none d-flex align-items-center gap-1"
+                                                       style="font-weight:400; font-size:.75rem;">
+                                                        <i class="bi bi-paperclip"></i> {{ $att->original_name }}
+                                                    </a>
+                                                    @endforeach
+                                                </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -232,7 +243,7 @@
                         </div>
 
                         @if($isActive || $user->isSupervisor())
-                        <form method="POST" action="{{ route('comments.store', $ticket) }}">
+                        <form method="POST" action="{{ route('comments.store', $ticket) }}" enctype="multipart/form-data">
                             @csrf
                             <input type="hidden" name="is_internal" value="0">
                             <div class="d-flex gap-2">
@@ -241,9 +252,14 @@
                                     {{ $user->initials }}
                                 </div>
                                 <div class="flex-grow-1">
-                                    <textarea name="body" class="form-control" rows="3"
-                                              placeholder="Tulis komentar..." required></textarea>
-                                    <div class="d-flex justify-content-end mt-2">
+                                    <textarea name="body" id="commentBody" class="form-control" rows="3"
+                                              placeholder="Tulis komentar... Gunakan @nama untuk mention seseorang" required></textarea>
+                                    <div class="d-flex align-items-center justify-content-between mt-2 gap-2 flex-wrap">
+                                        <label class="btn btn-outline-secondary btn-sm mb-0" style="cursor:pointer;">
+                                            <i class="bi bi-paperclip me-1"></i> Lampiran
+                                            <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.zip" class="d-none" id="commentFiles">
+                                        </label>
+                                        <div id="filePreview" class="d-flex flex-wrap gap-1 flex-grow-1"></div>
                                         <button type="submit" class="btn btn-primary btn-sm">
                                             <i class="bi bi-send me-1"></i> Kirim
                                         </button>
@@ -265,7 +281,18 @@
                                             <span class="fw-semibold small"><i class="bi bi-lock-fill text-warning me-1"></i>{{ $note->user->name }}</span>
                                             <span class="text-muted" style="font-size:.72rem;">{{ $note->created_at->diffForHumans() }}</span>
                                         </div>
-                                        <div style="font-size:.875rem; white-space:pre-wrap;">{{ $note->body }}</div>
+                                        <div style="font-size:.875rem; white-space:pre-wrap;">{!! preg_replace('/@([\w\s]{2,40})/', '<span class="badge bg-warning-subtle text-warning-emphasis">@$1</span>', e($note->body)) !!}</div>
+                                        @if($note->attachments->count())
+                                        <div class="mt-2 d-flex flex-wrap gap-1">
+                                            @foreach($note->attachments as $att)
+                                            <a href="{{ route('attachments.download', $att) }}"
+                                               class="badge bg-light text-secondary border text-decoration-none d-flex align-items-center gap-1"
+                                               style="font-weight:400; font-size:.75rem;">
+                                                <i class="bi bi-paperclip"></i> {{ $att->original_name }}
+                                            </a>
+                                            @endforeach
+                                        </div>
+                                        @endif
                                     </div>
                                 </div>
                             @empty
@@ -274,14 +301,21 @@
                         </div>
 
                         @if($isActive)
-                        <form method="POST" action="{{ route('comments.store', $ticket) }}">
+                        <form method="POST" action="{{ route('comments.store', $ticket) }}" enctype="multipart/form-data">
                             @csrf
                             <input type="hidden" name="is_internal" value="1">
                             <textarea name="body" class="form-control mb-2" rows="3"
-                                      placeholder="Catatan internal (tidak terlihat oleh pelapor)..." required></textarea>
-                            <button type="submit" class="btn btn-warning btn-sm">
-                                <i class="bi bi-lock me-1"></i> Simpan Catatan
-                            </button>
+                                      placeholder="Catatan internal (tidak terlihat oleh pelapor)... Gunakan @nama untuk mention" required></textarea>
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="btn btn-outline-secondary btn-sm mb-0" style="cursor:pointer;">
+                                    <i class="bi bi-paperclip me-1"></i> Lampiran
+                                    <input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.zip" class="d-none" id="internalFiles">
+                                </label>
+                                <div id="internalFilePreview" class="d-flex flex-wrap gap-1 flex-grow-1 small text-muted"></div>
+                                <button type="submit" class="btn btn-warning btn-sm ms-auto">
+                                    <i class="bi bi-lock me-1"></i> Simpan Catatan
+                                </button>
+                            </div>
                         </form>
                         @endif
                     </div>
@@ -338,7 +372,7 @@
                     Deadline: {{ $ticket->sla_deadline->isoFormat('D MMM YYYY, HH:mm') }}
                 </div>
                 @php
-                    $pctVal = min(100, ($now->diffInMinutes($ticket->created_at) / max(1, $ticket->sla_deadline->diffInMinutes($ticket->created_at))) * 100);
+                    $pctVal = min(100, (now()->diffInMinutes($ticket->created_at) / max(1, $ticket->sla_deadline->diffInMinutes($ticket->created_at))) * 100);
                 @endphp
                 <div class="progress mt-2" style="height:6px;">
                     <div class="progress-bar bg-{{ $slaStatus === 'overdue' ? 'danger' : ($slaStatus === 'warning' ? 'warning' : 'success') }}"
@@ -502,4 +536,26 @@
     </div>
 </div>
 @endif
+
+@push('scripts')
+<script>
+function setupFilePreview(inputId, previewId) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+    if (!input || !preview) return;
+    input.addEventListener('change', () => {
+        preview.innerHTML = '';
+        Array.from(input.files).forEach(f => {
+            const chip = document.createElement('span');
+            chip.className = 'badge bg-light text-secondary border d-flex align-items-center gap-1';
+            chip.style.fontWeight = '400';
+            chip.innerHTML = `<i class="bi bi-paperclip"></i> ${f.name}`;
+            preview.appendChild(chip);
+        });
+    });
+}
+setupFilePreview('commentFiles', 'filePreview');
+setupFilePreview('internalFiles', 'internalFilePreview');
+</script>
+@endpush
 @endsection

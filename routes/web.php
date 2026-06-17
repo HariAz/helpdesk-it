@@ -10,7 +10,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RatingController;
+use App\Http\Controllers\TicketTemplateController;
 
 // Auth
 Route::get('/', fn() => redirect()->route('login'));
@@ -70,6 +72,21 @@ Route::middleware('auth')->group(function () {
         // Activity Logs
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::get('/activity-logs/export', [ActivityLogController::class, 'export'])->name('activity-logs.export');
+    });
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
+    // Ticket Templates (AJAX for all, CRUD for supervisor)
+    Route::get('/ticket-templates/list', [TicketTemplateController::class, 'apiList'])->name('ticket-templates.list');
+
+    Route::middleware('role:supervisor')->group(function () {
+        Route::get('/ticket-templates', [TicketTemplateController::class, 'index'])->name('ticket-templates.index');
+        Route::post('/ticket-templates', [TicketTemplateController::class, 'store'])->name('ticket-templates.store');
+        Route::patch('/ticket-templates/{ticketTemplate}', [TicketTemplateController::class, 'update'])->name('ticket-templates.update');
+        Route::delete('/ticket-templates/{ticketTemplate}', [TicketTemplateController::class, 'destroy'])->name('ticket-templates.destroy');
     });
 
     // Category subcategories (AJAX)

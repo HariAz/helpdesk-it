@@ -18,6 +18,26 @@
         <form method="POST" action="{{ route('tickets.store') }}" enctype="multipart/form-data">
             @csrf
 
+            <!-- Template Picker -->
+            <div class="card border-0 shadow-sm mb-3" id="templateCard">
+                <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2 text-primary"></i>Gunakan Template</h6>
+                    <span class="badge bg-primary-subtle text-primary" style="font-size:.7rem;">Opsional</span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-2">Pilih template untuk mengisi deskripsi secara otomatis.</p>
+                    <div class="d-flex gap-2">
+                        <select id="templateSelect" class="form-select form-select-sm">
+                            <option value="">-- Pilih template (opsional) --</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="applyTemplate" disabled>
+                            Terapkan
+                        </button>
+                    </div>
+                    <div id="templateHint" class="text-muted small mt-2 d-none"></div>
+                </div>
+            </div>
+
             <!-- Judul & Deskripsi -->
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-white border-bottom py-3">
@@ -155,7 +175,14 @@
 
 @push('scripts')
 <script>
-    // Category → Subcategory AJAX
+    let allTemplates = [];
+
+    // Load templates on page load
+    fetch('/ticket-templates/list')
+        .then(r => r.json())
+        .then(data => { allTemplates = data; });
+
+    // Category → Subcategory AJAX + template filter
     document.getElementById('category_id')?.addEventListener('change', function() {
         const sub = document.getElementById('subcategory_id');
         sub.innerHTML = '<option value="">-- Pilih Subkategori --</option>';
@@ -173,6 +200,40 @@
                     sub.disabled = false;
                 }
             });
+
+        // Filter templates by selected category
+        const catId = parseInt(this.value);
+        const tplSelect = document.getElementById('templateSelect');
+        tplSelect.innerHTML = '<option value="">-- Pilih template (opsional) --</option>';
+        const filtered = allTemplates.filter(t => t.category_id === catId);
+        filtered.forEach(t => {
+            tplSelect.innerHTML += `<option value="${t.id}" data-desc="${t.description_template.replace(/"/g,'&quot;')}" data-priority="${t.priority}">${t.name}</option>`;
+        });
+        document.getElementById('applyTemplate').disabled = true;
+    });
+
+    document.getElementById('templateSelect')?.addEventListener('change', function() {
+        document.getElementById('applyTemplate').disabled = !this.value;
+        const opt = this.options[this.selectedIndex];
+        const hint = document.getElementById('templateHint');
+        if (this.value) {
+            hint.textContent = `Prioritas default: ${opt.dataset.priority}`;
+            hint.classList.remove('d-none');
+        } else {
+            hint.classList.add('d-none');
+        }
+    });
+
+    document.getElementById('applyTemplate')?.addEventListener('click', function() {
+        const tplSelect = document.getElementById('templateSelect');
+        const opt = tplSelect.options[tplSelect.selectedIndex];
+        if (!opt.value) return;
+        document.querySelector('textarea[name=description]').value = opt.dataset.desc;
+        const priority = opt.dataset.priority;
+        const radioId = `p_${priority}`;
+        const radio = document.getElementById(radioId);
+        if (radio) radio.checked = true;
+        document.querySelector('textarea[name=description]').focus();
     });
 
     // File input preview
